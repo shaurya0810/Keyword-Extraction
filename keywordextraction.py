@@ -1,59 +1,53 @@
-import keras
-from keras.datasets import mnist
-from keras.models import Sequential
-from keras.layers import Dense, Dropout, Flatten
-from keras.layers import Conv2D, MaxPooling2D
-from keras import backend as K
+import streamlit as st
+import newspaper
+import nltk
 
-# the data, split between train and test sets
-(x_train, y_train), (x_test, y_test) = mnist.load_data()
+nltk.download('punkt')
 
-print(x_train.shape, y_train.shape)
+# st.markdown('<style> .css-1v0mbdj {margin:0 auto; width:50%; </style>', unsafe_allow_html=True)
 
-# !pip install  tensorflow
-# !pip install numpy
-# !pip install keras
-# !pip install pillow
 
-num_classes=10
-x_train = x_train.reshape(x_train.shape[0], 28, 28, 1)
-x_test = x_test.reshape(x_test.shape[0], 28, 28, 1)
-input_shape = (28, 28, 1)
+st.title('Article Summarizer')
 
-# convert class vectors to binary class matrices
-y_train = keras.utils.to_categorical(y_train, num_classes)
-y_test = keras.utils.to_categorical(y_test, num_classes)
+url = st.text_input('', placeholder='Paste the URL of the article amd press Enter')
 
-x_train = x_train.astype('float32')
-x_test = x_test.astype('float32')
-x_train /= 255
-x_test /= 255
-print('x_train shape:', x_train.shape)
-print(x_train.shape[0], 'train samples')
-print(x_test.shape[0], 'test samples')
+if url:
+    try:
+        article = newspaper.Article(url)
 
-batch_size = 128
-num_classes = 10
-epochs = 10
+        article.download()
+        # article.html
+        article.parse()
 
-model = Sequential()
-model.add(Conv2D(32, kernel_size=(3, 3),activation='relu',input_shape=input_shape))
-model.add(Conv2D(64, (3, 3), activation='relu'))
-model.add(MaxPooling2D(pool_size=(2, 2)))
-model.add(Dropout(0.25))
-model.add(Flatten())
-model.add(Dense(256, activation='relu'))
-model.add(Dropout(0.5))
-model.add(Dense(num_classes, activation='softmax'))
+        img = article.top_image
+        st.image(img)
+        
 
-model.compile(loss=keras.losses.categorical_crossentropy,optimizer=keras.optimizers.Adadelta(),metrics=['accuracy'])
+        title = article.title
+        st.subheader(title)
+        
 
-hist = model.fit(x_train, y_train,batch_size=batch_size,epochs=epochs,verbose=1,validation_data=(x_test, y_test))
-print("The model has successfully trained")
+        authors = article.authors
+        st.text(','.join(authors))
+        
+        article.nlp()
 
-model.save('mnist.h5')
-print("Saving the model as mnist.h5")
-
-score = model.evaluate(x_test, y_test, verbose=0)
-print('Test loss:', score[0])
-print('Test accuracy:', score[1])
+        keywords = article.keywords
+        st.subheader('Keywords:')
+        st.write(', '.join(keywords))
+        
+        tab1, tab2= st.tabs(["Full Text", "Summary"])
+        with tab1:
+            txt = article.text
+            txt = txt.replace('Advertisement', '')
+            st.write(txt)
+        
+        with tab2:
+            st.subheader('Summary')
+            summary = article.summary
+            summary = summary.replace('Advertisement', '')
+            st.write(summary)
+        
+        
+    except:
+        st.error('Sorry something went wrong')
